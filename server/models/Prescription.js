@@ -70,6 +70,8 @@ const prescriptionSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    lastResentAt: { type: Date, default: null },    
+    resendCount: { type: Number, default: 0 }, 
   },
   {
     timestamps: true,

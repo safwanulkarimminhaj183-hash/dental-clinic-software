@@ -153,6 +153,36 @@ router.get(
   }
 );
 
+// DELETE /:id - Delete an appointment
+router.delete(
+  '/:id',
+  optionalAuth,
+  async (req, res) => {
+    try {
+      const appointment = await UrgentAppointment.findByIdAndDelete(req.params.id);
+
+      if (!appointment) {
+        logger.warn('Appointment not found for deletion', { appointmentId: req.params.id });
+        return res.status(404).json({ success: false, message: 'Appointment not found.' });
+      }
+
+      logger.info('Appointment deleted successfully', {
+        appointmentId: appointment._id,
+        patientName: appointment.patientName,
+      });
+
+      res.json({
+        success: true,
+        message: 'Appointment deleted successfully.',
+        data: appointment,
+      });
+    } catch (err) {
+      logger.error('Error deleting appointment:', err);
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+);
+
 // PATCH /:id/status - Update appointment status
 router.patch(
   '/:id/status',

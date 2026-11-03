@@ -1,11 +1,11 @@
-const multer = require('multer');
-const sharp = require('sharp');
-const path = require('path');
-const fs = require('fs');
+import multer from 'multer';
+import sharp from 'sharp';
+import path from 'path';
+import fs from 'fs';
 
 // Memory storage to process buffer with sharp
 const storage = multer.memoryStorage();
-const upload = multer({ 
+const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // Max 5MB
   fileFilter: (req, file, cb) => {
@@ -21,7 +21,7 @@ const processAndSaveImages = async (req, res, next) => {
   if (!req.file) return next();
 
   try {
-    const uploadDir = path.join(__dirname, '../uploads/gallery');
+    const uploadDir = path.join(process.cwd(), 'server/uploads/gallery');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -71,4 +71,4 @@ const processAndSaveImages = async (req, res, next) => {
   }
 };
 
-module.exports = { upload, processAndSaveImages };
+export { upload, processAndSaveImages };

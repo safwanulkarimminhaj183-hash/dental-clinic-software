@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import PatientRecord from '../models/PatientRecord.js';
+import User from '../models/User.js';
 
 // Realistic sample seed data to populate initial records if database is empty
 const INITIAL_DEMO_RECORDS = [
@@ -99,6 +100,63 @@ const INITIAL_DEMO_RECORDS = [
         notes: 'Scheduled for post-endodontic final core buildup and monolithic zirconia crown cementation.',
       },
     ],
+    toothHistory: [
+      {
+        toothNumber: '19',
+        timeline: [
+          {
+            date: new Date('2026-08-15'),
+            procedure: 'Endodontic Therapy (Root Canal Treatment - Phase 1)',
+            doctor: 'Dr. Sarah Johnson',
+            status: 'Completed',
+            notes: 'Access cavity prepared. 3 canals negotiated (MB, ML, D) and shaped to Protaper Gold F2. Calcium hydroxide medicament placed.',
+            cost: 950,
+          },
+          {
+            date: new Date('2026-07-10'),
+            procedure: 'Composite Restoration - Class II',
+            doctor: 'Dr. Michael Chen',
+            status: 'Completed',
+            notes: 'Patient presented with deep caries. Composite restoration placed with proper isolation.',
+            cost: 240,
+          },
+          {
+            date: new Date('2026-06-15'),
+            procedure: 'Routine Examination',
+            doctor: 'Dr. Sarah Johnson',
+            status: 'Completed',
+            notes: 'No acute issues noted. Patient due for preventive care.',
+            cost: 120,
+          },
+        ],
+      },
+      {
+        toothNumber: '30',
+        timeline: [
+          {
+            date: new Date('2026-05-20'),
+            procedure: 'Ultrasonic Scaling',
+            doctor: 'Dr. Michael Chen',
+            status: 'Completed',
+            notes: 'Prophylaxis completed. Periodontal health within normal limits.',
+            cost: 150,
+          },
+        ],
+      },
+      {
+        toothNumber: '14',
+        timeline: [
+          {
+            date: new Date('2026-04-12'),
+            procedure: 'Dental Sealant Application',
+            doctor: 'Dr. Emily Watson',
+            status: 'Completed',
+            notes: 'Preventive sealant placed on occlusal surface.',
+            cost: 80,
+          },
+        ],
+      },
+    ],
   },
   {
     patientId: 'PAT-1088',
@@ -157,6 +215,50 @@ const INITIAL_DEMO_RECORDS = [
         notes: 'Class II MO composite restoration using Filtek Supreme A2. Perfect contact point established.',
       },
     ],
+    toothHistory: [
+      {
+        toothNumber: '30',
+        timeline: [
+          {
+            date: new Date('2026-08-28'),
+            procedure: 'Titanium Dental Implant Placement',
+            doctor: 'Dr. Emily Watson',
+            status: 'Completed',
+            notes: 'Straumann SLA 4.1x10mm implant fixture placed with 35 Ncm torque. Healing abutment torqued to 15 Ncm.',
+            cost: 1850,
+          },
+          {
+            date: new Date('2026-08-15'),
+            procedure: 'Tooth Extraction',
+            doctor: 'Dr. Sarah Johnson',
+            status: 'Completed',
+            notes: 'Extraction of severely compromised tooth #30 due to vertical root fracture.',
+            cost: 180,
+          },
+          {
+            date: new Date('2026-07-01'),
+            procedure: 'Endodontic Evaluation',
+            doctor: 'Dr. Emily Watson',
+            status: 'Completed',
+            notes: 'Patient presented with acute pain. Vertical root fracture diagnosed. Extraction recommended.',
+            cost: 95,
+          },
+        ],
+      },
+      {
+        toothNumber: '14',
+        timeline: [
+          {
+            date: new Date('2026-05-14'),
+            procedure: 'Direct Composite Restoration',
+            doctor: 'Dr. Sarah Johnson',
+            status: 'Completed',
+            notes: 'Class II MO composite restoration using Filtek Supreme A2. Perfect contact point established.',
+            cost: 240,
+          },
+        ],
+      },
+    ],
   },
   {
     patientId: 'PAT-1105',
@@ -204,6 +306,42 @@ const INITIAL_DEMO_RECORDS = [
         status: 'Completed',
         cost: 450,
         notes: 'Three 15-minute cycles with 25% hydrogen peroxide gel. Shade improved from Vita A3 to B1. Neutral fluoride gel applied.',
+      },
+    ],
+    toothHistory: [
+      {
+        toothNumber: '8',
+        timeline: [
+          {
+            date: new Date('2026-09-02'),
+            procedure: 'Professional Teeth Whitening',
+            doctor: 'Dr. Emily Watson',
+            status: 'Completed',
+            notes: 'In-office whitening procedure completed successfully.',
+            cost: 450,
+          },
+          {
+            date: new Date('2026-08-15'),
+            procedure: 'Composite Bonding',
+            doctor: 'Dr. Sarah Johnson',
+            status: 'Completed',
+            notes: 'Minor diastema closure with composite bonding on upper central incisors.',
+            cost: 280,
+          },
+        ],
+      },
+      {
+        toothNumber: '9',
+        timeline: [
+          {
+            date: new Date('2026-08-15'),
+            procedure: 'Composite Bonding',
+            doctor: 'Dr. Sarah Johnson',
+            status: 'Completed',
+            notes: 'Composite bonding for aesthetic enhancement.',
+            cost: 280,
+          },
+        ],
       },
     ],
   },
@@ -615,6 +753,441 @@ export const addPastTreatment = async (req, res) => {
   }
 };
 
+// @desc    Upload patient X-ray file
+// @route   POST /api/v1/patient-records/:id/xrays/upload
+export const uploadPatientXray = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    let filter = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { patientId: id.toUpperCase() };
+    const record = await PatientRecord.findOne(filter);
+    if (!record) {
+      return res.status(404).json({ success: false, message: 'Patient not found' });
+    }
+
+    const xrayUrl = `/uploads/patients/${req.file.filename}`;
+    record.xrayImages.push({
+      imageUrl: xrayUrl,
+      uploadDate: new Date(),
+      description: req.body.description || 'X-ray upload',
+    });
+    await record.save();
+
+    return res.status(201).json({
+      success: true,
+      message: 'X-ray uploaded successfully',
+      data: record,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Upload standalone file
+// @route   POST /api/v1/patient-records/upload
+export const uploadStandaloneFile = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: 'File uploaded successfully',
+      data: {
+        filename: req.file.filename,
+        path: `/uploads/patients/${req.file.filename}`,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Add patient appointment
+// @route   POST /api/v1/patient-records/:id/appointments
+export const addPatientAppointment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { appointmentDate, doctorName, reason, status, notes } = req.body;
+
+    let filter = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { patientId: id.toUpperCase() };
+    const record = await PatientRecord.findOne(filter);
+    if (!record) {
+      return res.status(404).json({ success: false, message: 'Patient not found' });
+    }
+
+    const newAppointment = {
+      appointmentDate: appointmentDate ? new Date(appointmentDate) : new Date(),
+      doctorName: doctorName || 'Dr. Sarah Johnson',
+      reason: reason || 'General Checkup',
+      status: status || 'Scheduled',
+      notes: notes || '',
+    };
+
+    record.appointments.unshift(newAppointment);
+    await record.save();
+
+    return res.status(201).json({
+      success: true,
+      message: 'Appointment added successfully',
+      data: record,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get patient appointments
+// @route   GET /api/v1/patient-records/:id/appointments
+export const getPatientAppointments = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let filter = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { patientId: id.toUpperCase() };
+    const record = await PatientRecord.findOne(filter);
+    if (!record) {
+      return res.status(404).json({ success: false, message: 'Patient not found' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: record.appointments,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Add patient invoice
+// @route   POST /api/v1/patient-records/:id/invoices
+export const addPatientInvoice = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { totalAmount, paidAmount, paymentMethod, paymentStatus, dueAmount, date, description } = req.body;
+
+    let filter = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { patientId: id.toUpperCase() };
+    const record = await PatientRecord.findOne(filter);
+    if (!record) {
+      return res.status(404).json({ success: false, message: 'Patient not found' });
+    }
+
+    const newInvoice = {
+      invoiceNumber: `INV-${Date.now()}`,
+      totalAmount: Number(totalAmount) || 0,
+      paidAmount: Number(paidAmount) || 0,
+      paymentMethod: paymentMethod || 'Cash',
+      paymentStatus: paymentStatus || 'Pending',
+      dueAmount: Number(dueAmount) || 0,
+      date: date ? new Date(date) : new Date(),
+      description: description || 'Dental services',
+    };
+
+    record.invoices.unshift(newInvoice);
+    await record.save();
+
+    return res.status(201).json({
+      success: true,
+      message: 'Invoice added successfully',
+      data: record,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get patient invoices
+// @route   GET /api/v1/patient-records/:id/invoices
+export const getPatientInvoices = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let filter = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { patientId: id.toUpperCase() };
+    const record = await PatientRecord.findOne(filter);
+    if (!record) {
+      return res.status(404).json({ success: false, message: 'Patient not found' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: record.invoices,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOOTH TIMELINE ENDPOINTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// @desc    Get tooth timeline for a specific patient
+// @route   GET /api/v1/patient-records/:id/tooth/:toothNumber
+// @access  Private (Doctor, Admin, Receptionist)
+export const getToothTimeline = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { toothNumber } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+
+    // Validate patient ID
+    let filter = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { patientId: id.toUpperCase() };
+    const record = await PatientRecord.findOne(filter);
+
+    if (!record) {
+      return res.status(404).json({
+        success: false,
+        message: 'Patient not found',
+      });
+    }
+
+    // Find the specific tooth history
+    const toothHistory = record.toothHistory.find(
+      (th) => th.toothNumber === toothNumber
+    );
+
+    if (!toothHistory || !toothHistory.timeline || toothHistory.timeline.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No timeline data found for this tooth',
+        data: {
+          toothNumber,
+          timeline: [],
+          totalRecords: 0,
+          currentPage: page,
+          totalPages: 0,
+        },
+      });
+    }
+
+    // Sort timeline in reverse chronological order (newest first)
+    const sortedTimeline = toothHistory.timeline.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Pagination
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    const paginatedTimeline = sortedTimeline.slice(startIndex, endIndex);
+
+    // Populate doctor information
+    const timelineWithDoctors = await Promise.all(
+      paginatedTimeline.map(async (entry) => {
+        try {
+          const doctor = await User.findOne({ name: entry.doctor }).select('name specialty');
+          return {
+            ...entry.toObject ? entry.toObject() : entry,
+            doctorInfo: doctor
+              ? {
+                  name: doctor.name,
+                  specialty: doctor.specialty || 'General Dentistry',
+                }
+              : {
+                  name: entry.doctor,
+                  specialty: 'General Dentistry',
+                },
+          };
+        } catch {
+          return {
+            ...entry.toObject ? entry.toObject() : entry,
+            doctorInfo: {
+              name: entry.doctor,
+              specialty: 'General Dentistry',
+            },
+          };
+        }
+      })
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        toothNumber,
+        timeline: timelineWithDoctors,
+        totalRecords: sortedTimeline.length,
+        currentPage: page,
+        totalPages: Math.ceil(sortedTimeline.length / limit),
+        hasNextPage: endIndex < sortedTimeline.length,
+        hasPreviousPage: page > 1,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Get all tooth history for a patient (full mouth view)
+// @route   GET /api/v1/patient-records/:id/tooth-history
+// @access  Private (Doctor, Admin, Receptionist)
+export const getAllToothHistory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+
+    // Validate patient ID
+    let filter = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { patientId: id.toUpperCase() };
+    const record = await PatientRecord.findOne(filter);
+
+    if (!record) {
+      return res.status(404).json({
+        success: false,
+        message: 'Patient not found',
+      });
+    }
+
+    if (!record.toothHistory || record.toothHistory.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No tooth history found for this patient',
+        data: {
+          toothHistory: [],
+          totalRecords: 0,
+          currentPage: page,
+          totalPages: 0,
+        },
+      });
+    }
+
+    // Flatten all timeline entries and sort by date
+    const allTimelineEntries = [];
+    record.toothHistory.forEach((th) => {
+      th.timeline.forEach((entry) => {
+        allTimelineEntries.push({
+          toothNumber: th.toothNumber,
+          ...entry.toObject ? entry.toObject() : entry,
+        });
+      });
+    });
+
+    // Sort in reverse chronological order
+    const sortedTimeline = allTimelineEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Pagination
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    const paginatedTimeline = sortedTimeline.slice(startIndex, endIndex);
+
+    // Populate doctor information
+    const timelineWithDoctors = await Promise.all(
+      paginatedTimeline.map(async (entry) => {
+        try {
+          const doctor = await User.findOne({ name: entry.doctor }).select('name specialty');
+          return {
+            ...entry,
+            doctorInfo: doctor
+              ? {
+                  name: doctor.name,
+                  specialty: doctor.specialty || 'General Dentistry',
+                }
+              : {
+                  name: entry.doctor,
+                  specialty: 'General Dentistry',
+                },
+          };
+        } catch {
+          return {
+            ...entry,
+            doctorInfo: {
+              name: entry.doctor,
+              specialty: 'General Dentistry',
+            },
+          };
+        }
+      })
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        toothHistory: timelineWithDoctors,
+        totalRecords: sortedTimeline.length,
+        currentPage: page,
+        totalPages: Math.ceil(sortedTimeline.length / limit),
+        hasNextPage: endIndex < sortedTimeline.length,
+        hasPreviousPage: page > 1,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Add tooth timeline entry
+// @route   POST /api/v1/patient-records/:id/tooth/:toothNumber/timeline
+// @access  Private (Doctor, Admin)
+export const addToothTimelineEntry = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { toothNumber } = req.params;
+    const { date, procedure, doctor, status, notes, cost } = req.body;
+
+    console.log('Add Tooth Timeline - Patient ID:', id);
+    console.log('Add Tooth Timeline - Tooth Number:', toothNumber);
+
+    // Validate patient ID
+    let filter = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { patientId: id.toUpperCase() };
+    console.log('Add Tooth Timeline - Filter:', filter);
+
+    const record = await PatientRecord.findOne(filter);
+    console.log('Add Tooth Timeline - Found Record:', record ? 'Yes' : 'No');
+
+    if (!record) {
+      return res.status(404).json({
+        success: false,
+        message: 'Patient not found',
+      });
+    }
+
+    // Find or create tooth history entry
+    let toothHistory = record.toothHistory.find((th) => th.toothNumber === toothNumber);
+
+    if (!toothHistory) {
+      // Create new tooth history entry
+      toothHistory = {
+        toothNumber,
+        timeline: [],
+      };
+      record.toothHistory.push(toothHistory);
+      toothHistory = record.toothHistory[record.toothHistory.length - 1];
+    }
+
+    // Add new timeline entry
+    const newTimelineEntry = {
+      date: date ? new Date(date) : new Date(),
+      procedure: procedure || 'General Examination',
+      doctor: doctor || req.user?.name || 'Dr. Sarah Johnson',
+      status: status || 'Completed',
+      notes: notes || '',
+      cost: cost || 0,
+    };
+
+    toothHistory.timeline.push(newTimelineEntry);
+    await record.save();
+
+    return res.status(201).json({
+      success: true,
+      message: 'Tooth timeline entry added successfully',
+      data: {
+        toothNumber,
+        timelineEntry: newTimelineEntry,
+        totalEntries: toothHistory.timeline.length,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 export default {
   getAllPatientRecords,
   getPatientRecordById,
@@ -624,4 +1197,13 @@ export default {
   addPrescription,
   addXrayImage,
   addPastTreatment,
+  uploadPatientXray,
+  uploadStandaloneFile,
+  addPatientAppointment,
+  getPatientAppointments,
+  addPatientInvoice,
+  getPatientInvoices,
+  getToothTimeline,
+  getAllToothHistory,
+  addToothTimelineEntry,
 };

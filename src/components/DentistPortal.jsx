@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CalendarDays,
@@ -72,20 +72,33 @@ const PROCEDURES_LIST = [
 ];
 
 const DentistPortal = () => {
-  const { id } = useParams();
+    const { id } = useParams();
+  const location = useLocation();
   const doctorId = id || 'doc-1';
+
+  // The doctor picked on the Specialists page (router state, or sessionStorage after a page refresh)
+  const selectedDoctor = (() => {
+    if (location.state?.doctor) return location.state.doctor;
+    try {
+      const saved = sessionStorage.getItem(`dentocare_portal_doctor_${doctorId}`);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  })();
+  const initialDoctor = selectedDoctor ? { ...MOCK_DOCTOR, ...selectedDoctor } : MOCK_DOCTOR;
 
   // Active Portal Tab: 'schedule' | 'emr' | 'earnings' | 'blogs'
   const [activeTab, setActiveTab] = useState('schedule');
 
   // Doctor Profile State
-  const [doctor, setDoctor] = useState(MOCK_DOCTOR);
+  const [doctor, setDoctor] = useState(initialDoctor);
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(null);
 
   // Edit Profile Modal State
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editForm, setEditForm] = useState({ ...MOCK_DOCTOR });
+  const [editForm, setEditForm] = useState({ ...initialDoctor });
 
   // ── 1. Schedule & Slot Engine State ────────────────────────────────────────
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -722,14 +735,14 @@ const DentistPortal = () => {
                         blockedDates.map((bDate) => (
                           <div
                             key={bDate}
-                            className="flex items-center justify-between bg-[#0f2132] px-3 py-1.5 rounded-lg border border-slate-700/60 text-xs text-slate-300"
+                            className="flex items-center justify-between bg-[#0f2132] px-3 py-2 rounded-lg border border-slate-700/60 text-xs"
                           >
-                            <span>📅 {bDate}</span>
+                            <span className="font-semibold text-slate-200">{bDate}</span>
                             <button
-                              onClick={() => setBlockedDates((prev) => prev.filter((d) => d !== bDate))}
-                              className="text-red-400 hover:text-red-300"
+                              onClick={() => setBlockedDates(blockedDates.filter((d) => d !== bDate))}
+                              className="text-red-400 hover:text-red-300 cursor-pointer"
                             >
-                              <X className="w-3.5 h-3.5" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         ))
@@ -737,79 +750,74 @@ const DentistPortal = () => {
                     </div>
                   </div>
                 </div>
-
-                <div className="pt-4 border-t border-slate-700/60 text-center">
-                  <span className="text-[11px] text-slate-400">
-                    Engine Sync: <span className="text-emerald-400 font-bold">Online</span>
-                  </span>
-                </div>
               </div>
+
             </div>
 
-            {/* Live Patient Queue Filtered by Date */}
-            <div className="bg-[#142637] p-6 rounded-2xl border border-slate-700/60 shadow-xl space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-700/60 pb-4">
-                <div className="flex items-center gap-3">
-                  <UserCheck className="w-5 h-5 text-[#3ec1d3]" />
-                  <div>
-                    <h3 className="text-lg font-bold text-white">Live Patient Queue</h3>
-                    <p className="text-xs text-slate-400">Real-time chamber appointments & queue progress</p>
-                  </div>
+            {/* Today's Patient Queue Manager */}
+            <div className="bg-[#142637] p-6 rounded-2xl border border-slate-700/60 shadow-xl">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-700/60 pb-4 mb-6">
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <UserCheck className="w-5 h-5 text-[#3ec1d3]" /> Today's Patient Queue Manager
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Manage appointment arrivals and chamber workflow status.</p>
                 </div>
-
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                  <label className="text-xs font-bold text-slate-300">Filter Date:</label>
+                <div className="flex items-center gap-2">
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                    className="bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
                   />
                 </div>
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-[#0f2132] text-slate-400 uppercase tracking-wider text-[10px]">
-                    <tr>
-                      <th className="p-3.5 rounded-l-lg">Time</th>
-                      <th className="p-3.5">Patient Name</th>
-                      <th className="p-3.5">Age / Gender</th>
-                      <th className="p-3.5">Procedure</th>
-                      <th className="p-3.5">Status</th>
-                      <th className="p-3.5 rounded-r-lg text-right">Queue Actions</th>
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-700 text-slate-400 text-[11px] uppercase tracking-wider">
+                      <th className="py-3 px-4">Time</th>
+                      <th className="py-3 px-4">Patient Name</th>
+                      <th className="py-3 px-4">Procedure</th>
+                      <th className="py-3 px-4">Contact</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-700/40 font-medium">
-                    {patients.map((pt) => (
-                      <tr key={pt.id} className="hover:bg-[#0f2132]/50 transition-colors">
-                        <td className="p-3.5 font-bold text-[#3ec1d3]">{pt.time}</td>
-                        <td className="p-3.5 font-bold text-white">{pt.name}</td>
-                        <td className="p-3.5 text-slate-400">{pt.age} yrs / {pt.gender}</td>
-                        <td className="p-3.5 text-slate-300">{pt.procedure}</td>
-                        <td className="p-3.5">
+                  <tbody className="divide-y divide-slate-700/50 text-xs">
+                    {patients.map((p) => (
+                      <tr key={p.id} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-[#3ec1d3] whitespace-nowrap">{p.time}</td>
+                        <td className="py-3.5 px-4 font-semibold text-white">
+                          {p.name}
+                          <span className="block text-[10px] text-slate-400">{p.gender}, {p.age} yrs</span>
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-300">{p.procedure}</td>
+                        <td className="py-3.5 px-4 text-slate-400">{p.phone}</td>
+                        <td className="py-3.5 px-4">
                           <span
                             className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                              pt.status === 'Completed'
-                                ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-500/30'
-                                : pt.status === 'In Chamber'
-                                ? 'bg-amber-900/60 text-amber-300 border border-amber-500/30'
-                                : 'bg-slate-800 text-slate-300 border border-slate-700'
+                              p.status === 'Completed'
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                                : p.status === 'In Chamber'
+                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                                : 'bg-sky-500/10 text-sky-400 border border-sky-500/30'
                             }`}
                           >
-                            {pt.status}
+                            {p.status}
                           </span>
                         </td>
-                        <td className="p-3.5 text-right space-x-2">
+                        <td className="py-3.5 px-4 text-right space-x-1 whitespace-nowrap">
                           <button
-                            onClick={() => handlePatientStatusChange(pt.id, 'In Chamber')}
-                            className="bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer"
+                            onClick={() => handlePatientStatusChange(p.id, 'In Chamber')}
+                            className="bg-slate-800 hover:bg-slate-700 text-sky-400 px-2.5 py-1 rounded-lg font-semibold text-[11px] border border-slate-700 cursor-pointer"
                           >
                             In Chamber
                           </button>
                           <button
-                            onClick={() => handlePatientStatusChange(pt.id, 'Completed')}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer"
+                            onClick={() => handlePatientStatusChange(p.id, 'Completed')}
+                            className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 px-2.5 py-1 rounded-lg font-semibold text-[11px] border border-emerald-500/30 cursor-pointer"
                           >
                             Complete
                           </button>
@@ -820,41 +828,50 @@ const DentistPortal = () => {
                 </table>
               </div>
             </div>
+
           </motion.div>
         )}
 
         {/* ══════════════════════════════════════════════════════════════════════ */}
-        {/* TAB 2: EMR & DIGITAL PRESCRIPTION GENERATOR                            */}
+        {/* TAB 2: EMR & DIGITAL PRESCRIPTION GENERATOR                           */}
         {/* ══════════════════════════════════════════════════════════════════════ */}
         {activeTab === 'emr' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-            
-            {/* Grid: Prescription Generator Form + Patient EMR History */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               
-              {/* Prescription Generator */}
-              <div className="lg:col-span-2 bg-[#142637] p-6 rounded-2xl border border-slate-700/60 shadow-xl space-y-6">
-                <div className="flex items-center justify-between border-b border-slate-700/60 pb-4">
-                  <div className="flex items-center gap-2">
-                    <FilePlus className="w-5 h-5 text-[#3ec1d3]" />
-                    <h3 className="text-lg font-bold text-white">Digital Prescription Generator</h3>
-                  </div>
-                  <span className="text-xs text-slate-400">Rx Output: PDF & Print</span>
+              {/* Left Column: Prescription Form */}
+              <div className="lg:col-span-2 bg-[#142637] p-6 rounded-2xl border border-slate-700/60 shadow-xl">
+                <div className="flex items-center gap-2 border-b border-slate-700/60 pb-4 mb-6">
+                  <FileText className="w-5 h-5 text-[#3ec1d3]" />
+                  <h3 className="text-lg font-bold text-white">Digital Prescription & EMR Generator</h3>
                 </div>
 
-                <form onSubmit={handleGeneratePrescription} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <form onSubmit={handleGeneratePrescription} className="space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">Patient Name</label>
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Patient Full Name</label>
                       <input
                         type="text"
                         value={rxForm.patientName}
                         onChange={(e) => setRxForm({ ...rxForm, patientName: e.target.value })}
                         className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                        required
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">Age</label>
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Email Address</label>
+                      <input
+                        type="email"
+                        value={rxForm.patientEmail}
+                        onChange={(e) => setRxForm({ ...rxForm, patientEmail: e.target.value })}
+                        className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Age</label>
                       <input
                         type="text"
                         value={rxForm.patientAge}
@@ -863,7 +880,7 @@ const DentistPortal = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">Gender</label>
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Gender</label>
                       <select
                         value={rxForm.patientGender}
                         onChange={(e) => setRxForm({ ...rxForm, patientGender: e.target.value })}
@@ -875,29 +892,37 @@ const DentistPortal = () => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">Procedure</label>
-                      <select
-                        value={rxForm.procedure}
-                        onChange={(e) => setRxForm({ ...rxForm, procedure: e.target.value })}
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Next Visit</label>
+                      <input
+                        type="date"
+                        value={rxForm.nextVisitDate}
+                        onChange={(e) => setRxForm({ ...rxForm, nextVisitDate: e.target.value })}
                         className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
-                      >
-                        {PROCEDURES_LIST.map((proc) => (
-                          <option key={proc} value={proc}>{proc}</option>
-                        ))}
-                      </select>
+                      />
                     </div>
                   </div>
 
-                  {/* Medicines List Input */}
-                  <div className="pt-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Diagnosis / Procedure</label>
+                    <select
+                      value={rxForm.procedure}
+                      onChange={(e) => setRxForm({ ...rxForm, procedure: e.target.value })}
+                      className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                    >
+                      {PROCEDURES_LIST.map((pr) => (
+                        <option key={pr} value={pr}>{pr}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Medicines Builder */}
+                  <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                        Rx Prescribed Medicines ({medicines.length})
-                      </label>
+                      <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">Rx Medicines & Dosage</label>
                       <button
                         type="button"
                         onClick={() => setMedicines([...medicines, { name: '', dosage: '1-0-1', duration: '5 days', note: 'After meals' }])}
-                        className="text-xs text-[#3ec1d3] font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                        className="text-[11px] text-[#3ec1d3] font-bold hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" /> Add Medicine
                       </button>
@@ -905,224 +930,278 @@ const DentistPortal = () => {
 
                     <div className="space-y-2">
                       {medicines.map((med, idx) => (
-                        <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-[#0f2132] p-2.5 rounded-xl border border-slate-700/60">
+                        <div key={idx} className="flex items-center gap-2 bg-[#0f2132] p-2.5 rounded-xl border border-slate-700">
                           <input
                             type="text"
-                            placeholder="Medicine Name (e.g. Amoxicillin 500mg)"
+                            placeholder="Medicine Name (e.g., Amoxicillin 500mg)"
                             value={med.name}
                             onChange={(e) => {
-                              const updated = [...medicines];
-                              updated[idx].name = e.target.value;
-                              setMedicines(updated);
+                              const list = [...medicines];
+                              list[idx].name = e.target.value;
+                              setMedicines(list);
                             }}
-                            className="col-span-5 bg-[#142637] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                            className="flex-1 bg-transparent text-xs text-white focus:outline-none"
                           />
                           <input
                             type="text"
                             placeholder="Dosage (1-0-1)"
                             value={med.dosage}
                             onChange={(e) => {
-                              const updated = [...medicines];
-                              updated[idx].dosage = e.target.value;
-                              setMedicines(updated);
+                              const list = [...medicines];
+                              list[idx].dosage = e.target.value;
+                              setMedicines(list);
                             }}
-                            className="col-span-2 bg-[#142637] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                            className="w-24 bg-slate-800 border border-slate-700 px-2 py-1 rounded text-xs text-white text-center focus:outline-none"
                           />
                           <input
                             type="text"
-                            placeholder="Duration (5 days)"
+                            placeholder="Duration"
                             value={med.duration}
                             onChange={(e) => {
-                              const updated = [...medicines];
-                              updated[idx].duration = e.target.value;
-                              setMedicines(updated);
+                              const list = [...medicines];
+                              list[idx].duration = e.target.value;
+                              setMedicines(list);
                             }}
-                            className="col-span-2 bg-[#142637] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
-                          />
-                          <input
-                            type="text"
-                            placeholder="Instructions"
-                            value={med.note}
-                            onChange={(e) => {
-                              const updated = [...medicines];
-                              updated[idx].note = e.target.value;
-                              setMedicines(updated);
-                            }}
-                            className="col-span-2 bg-[#142637] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                            className="w-24 bg-slate-800 border border-slate-700 px-2 py-1 rounded text-xs text-white text-center focus:outline-none"
                           />
                           <button
                             type="button"
                             onClick={() => setMedicines(medicines.filter((_, i) => i !== idx))}
-                            className="col-span-1 text-red-400 hover:text-red-300 flex justify-center"
+                            className="text-red-400 hover:text-red-300 p-1 cursor-pointer"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">Clinical Advice & Notes</label>
-                      <textarea
-                        rows={2}
-                        value={rxForm.advice}
-                        onChange={(e) => setRxForm({ ...rxForm, advice: e.target.value })}
-                        className="w-full bg-[#0f2132] border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">Next Follow-Up Date</label>
-                      <input
-                        type="date"
-                        value={rxForm.nextVisitDate}
-                        onChange={(e) => setRxForm({ ...rxForm, nextVisitDate: e.target.value })}
-                        className="w-full bg-[#0f2132] border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Clinical Advice & Post-Op Instructions</label>
+                    <textarea
+                      rows={3}
+                      value={rxForm.advice}
+                      onChange={(e) => setRxForm({ ...rxForm, advice: e.target.value })}
+                      className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                    />
                   </div>
 
                   <div className="flex justify-end pt-2">
                     <button
                       type="submit"
-                      className="bg-[#3ec1d3] hover:bg-[#34adb9] text-white font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                      className="bg-[#3ec1d3] hover:bg-[#34adb9] text-white font-bold text-xs px-6 py-3 rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
                     >
-                      <Printer className="w-4 h-4" /> Generate & Print Digital Prescription
+                      <FilePlus className="w-4 h-4" /> Issue & Print Prescription
                     </button>
                   </div>
                 </form>
               </div>
 
-              {/* Patient EMR Medical Records & X-Ray Attachments */}
-              <div className="bg-[#142637] p-6 rounded-2xl border border-slate-700/60 shadow-xl space-y-6">
-                <div className="flex items-center gap-2 border-b border-slate-700/60 pb-4">
-                  <Activity className="w-5 h-5 text-[#3ec1d3]" />
-                  <h3 className="text-lg font-bold text-white">EMR Records & Scans</h3>
-                </div>
-
-                <div>
-                  <p className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
-                    Attached Dental X-Rays & Imaging
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {xrays.map((xr) => (
-                      <div key={xr.id} className="bg-[#0f2132] rounded-xl overflow-hidden border border-slate-700/60 group">
-                        <img src={xr.url} alt={xr.label} className="w-full h-24 object-cover group-hover:scale-105 transition-transform" />
-                        <div className="p-2 text-center">
-                          <p className="text-[11px] font-bold text-slate-200 truncate">{xr.label}</p>
-                          <p className="text-[10px] text-slate-500">{xr.date}</p>
+              {/* Right Column: Treatment Tracker & X-Rays */}
+              <div className="space-y-6">
+                
+                {/* Treatment Progress Tracker */}
+                <div className="bg-[#142637] p-6 rounded-2xl border border-slate-700/60 shadow-xl">
+                  <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-[#3ec1d3]" /> Procedure Treatment Tracker
+                  </h3>
+                  <div className="space-y-4">
+                    {treatmentSteps.map((step) => (
+                      <div key={step.id} className="flex items-start gap-3 bg-[#0f2132] p-3 rounded-xl border border-slate-700/60">
+                        <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                          step.status === 'Completed'
+                            ? 'bg-emerald-500 text-white'
+                            : step.status === 'Scheduled'
+                            ? 'bg-[#3ec1d3] text-white'
+                            : 'bg-slate-700 text-slate-400'
+                        }`}>
+                          {step.status === 'Completed' ? <Check className="w-3 h-3" /> : <span className="text-[10px] font-bold">{step.id}</span>}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-white leading-tight">{step.title}</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">{step.date} • <span className="text-[#3ec1d3] font-medium">{step.status}</span></p>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Treatment Progress Tracker */}
-                <div className="pt-4 border-t border-slate-700/60">
-                  <p className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
-                    Visual Treatment Progress Tracker
-                  </p>
-                  <div className="space-y-3">
-                    {treatmentSteps.map((step) => (
-                      <div key={step.id} className="flex items-start gap-3 bg-[#0f2132] p-3 rounded-xl border border-slate-700/60">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold mt-0.5 ${
-                          step.status === 'Completed' ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-300'
-                        }`}>
-                          {step.status === 'Completed' ? <Check className="w-3.5 h-3.5" /> : step.id}
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-white">{step.title}</p>
-                          <p className="text-[10px] text-slate-400">{step.date} • <span className="text-[#3ec1d3]">{step.status}</span></p>
+                {/* Patient X-Ray Viewer */}
+                <div className="bg-[#142637] p-6 rounded-2xl border border-slate-700/60 shadow-xl">
+                  <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4 text-[#3ec1d3]" /> Patient X-Ray & DICOM Files
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {xrays.map((xr) => (
+                      <div key={xr.id} className="group relative rounded-xl overflow-hidden border border-slate-700 bg-slate-800">
+                        <img src={xr.url} alt={xr.label} className="w-full h-24 object-cover group-hover:scale-105 transition-transform" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent flex flex-col justify-end p-2">
+                          <p className="text-[11px] font-bold text-white truncate">{xr.label}</p>
+                          <p className="text-[9px] text-[#3ec1d3]">{xr.date}</p>
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* Active Rx Print Modal Preview */}
+            {activeRxPrint && (
+              <div className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4">
+                <div className="bg-white text-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl p-8 relative max-h-[90vh] overflow-y-auto">
+                  <button
+                    onClick={() => setActiveRxPrint(null)}
+                    className="absolute top-4 right-4 text-slate-400 hover:text-black p-2 cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+
+                  <div className="border-b-2 border-[#0e2a47] pb-4 mb-6 flex justify-between items-start">
+                    <div>
+                      <h2 className="text-2xl font-black text-[#0e2a47]">DentoCare Dental Suite</h2>
+                      <p className="text-xs text-slate-500">Advanced Dental Care & EMR Management</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-[#3ec1d3]">{activeRxPrint.prescriptionNumber}</p>
+                      <p className="text-xs text-slate-500">Date: {new Date(activeRxPrint.issuedAt).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <p className="text-slate-500 uppercase font-bold text-[10px]">Patient Name</p>
+                      <p className="font-bold text-slate-800 text-sm">{activeRxPrint.patientName}</p>
+                      <p className="text-slate-600">{activeRxPrint.patientGender}, {activeRxPrint.patientAge} yrs</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500 uppercase font-bold text-[10px]">Attending Specialist</p>
+                      <p className="font-bold text-slate-800 text-sm">{activeRxPrint.dentistName}</p>
+                      <p className="text-slate-600">{activeRxPrint.specialty}</p>
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-2">Rx - Medications</h4>
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead>
+                        <tr className="border-b text-slate-500">
+                          <th className="py-2">Medicine</th>
+                          <th className="py-2">Dosage</th>
+                          <th className="py-2">Duration</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {activeRxPrint.medicines?.map((m, i) => (
+                          <tr key={i}>
+                            <td className="py-2 font-bold text-slate-800">{m.name}</td>
+                            <td className="py-2 text-slate-600 font-semibold">{m.dosage}</td>
+                            <td className="py-2 text-slate-600">{m.duration}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="mb-8">
+                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-1">Clinical Advice</h4>
+                    <p className="text-xs text-slate-700 bg-amber-50 p-3 rounded-lg border border-amber-200">{activeRxPrint.advice}</p>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-6 border-t border-slate-200">
+                    <p className="text-[11px] text-slate-400">Next Follow-up Visit: {activeRxPrint.nextVisitDate}</p>
+                    <button
+                      onClick={() => window.print()}
+                      className="bg-[#0e2a47] hover:bg-[#3ec1d3] text-white font-bold text-xs px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-md"
+                    >
+                      <Printer className="w-4 h-4" /> Print Prescription
+                    </button>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
+
           </motion.div>
         )}
 
         {/* ══════════════════════════════════════════════════════════════════════ */}
-        {/* TAB 3: EARNINGS & INVOICE GENERATOR                                    */}
+        {/* TAB 3: EARNINGS & INVOICE GENERATOR                                   */}
         {/* ══════════════════════════════════════════════════════════════════════ */}
         {activeTab === 'earnings' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
             
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              <div className="bg-[#142637] p-5 rounded-2xl border border-slate-700/60 shadow-xl">
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Today's Revenue</p>
-                <h4 className="text-2xl font-extrabold text-[#3ec1d3] mt-2">${earnings.dailyRevenue}</h4>
-                <p className="text-[11px] text-emerald-400 font-semibold mt-1">↑ +14% vs yesterday</p>
+            {/* Stats Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-[#142637] p-5 rounded-2xl border border-slate-700/60 shadow-lg">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Today's Revenue</p>
+                <p className="text-2xl font-extrabold text-[#3ec1d3]">${earnings.dailyRevenue}</p>
+                <p className="text-[11px] text-emerald-400 mt-2 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> +12% vs yesterday</p>
               </div>
-
-              <div className="bg-[#142637] p-5 rounded-2xl border border-slate-700/60 shadow-xl">
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Monthly Total</p>
-                <h4 className="text-2xl font-extrabold text-emerald-400 mt-2">${earnings.monthlyRevenue}</h4>
-                <p className="text-[11px] text-slate-400 font-semibold mt-1">142 procedures completed</p>
+              <div className="bg-[#142637] p-5 rounded-2xl border border-slate-700/60 shadow-lg">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Monthly Revenue</p>
+                <p className="text-2xl font-extrabold text-white">${earnings.monthlyRevenue?.toLocaleString()}</p>
+                <p className="text-[11px] text-slate-400 mt-2">Current billing cycle</p>
               </div>
-
-              <div className="bg-[#142637] p-5 rounded-2xl border border-slate-700/60 shadow-xl">
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Advance Collected</p>
-                <h4 className="text-2xl font-extrabold text-indigo-400 mt-2">${earnings.advancePayments}</h4>
-                <p className="text-[11px] text-indigo-300 font-semibold mt-1">For upcoming treatments</p>
+              <div className="bg-[#142637] p-5 rounded-2xl border border-slate-700/60 shadow-lg">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Advance Payments</p>
+                <p className="text-2xl font-extrabold text-emerald-400">${earnings.advancePayments}</p>
+                <p className="text-[11px] text-slate-400 mt-2">Secured booking deposits</p>
               </div>
-
-              <div className="bg-[#142637] p-5 rounded-2xl border border-slate-700/60 shadow-xl">
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Pending Dues</p>
-                <h4 className="text-2xl font-extrabold text-amber-400 mt-2">${earnings.pendingDues}</h4>
-                <p className="text-[11px] text-amber-300 font-semibold mt-1">6 invoices pending</p>
+              <div className="bg-[#142637] p-5 rounded-2xl border border-slate-700/60 shadow-lg">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Pending Dues</p>
+                <p className="text-2xl font-extrabold text-amber-400">${earnings.pendingDues}</p>
+                <p className="text-[11px] text-slate-400 mt-2">Awaiting final settlement</p>
               </div>
             </div>
 
-            {/* Invoice Generator + Invoices List */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Invoices & Bill Generator Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               
-              {/* Invoice Form */}
-              <div className="bg-[#142637] p-6 rounded-2xl border border-slate-700/60 shadow-xl space-y-5">
-                <div className="flex items-center gap-2 border-b border-slate-700/60 pb-4">
+              {/* Invoice Generator Form */}
+              <div className="bg-[#142637] p-6 rounded-2xl border border-slate-700/60 shadow-xl">
+                <div className="flex items-center gap-2 border-b border-slate-700/60 pb-4 mb-6">
                   <CreditCard className="w-5 h-5 text-[#3ec1d3]" />
-                  <h3 className="text-lg font-bold text-white">Auto Invoice Generator</h3>
+                  <h3 className="text-lg font-bold text-white">Generate Patient Invoice</h3>
                 </div>
 
                 <form onSubmit={handleCreateInvoice} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">Patient Name</label>
+                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Patient Name</label>
                     <input
                       type="text"
                       value={invoiceForm.patientName}
                       onChange={(e) => setInvoiceForm({ ...invoiceForm, patientName: e.target.value })}
                       className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                      required
                     />
                   </div>
-
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">Treatment / Procedure</label>
+                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Procedure</label>
                     <select
                       value={invoiceForm.procedure}
                       onChange={(e) => setInvoiceForm({ ...invoiceForm, procedure: e.target.value })}
                       className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
                     >
-                      {PROCEDURES_LIST.map((proc) => (
-                        <option key={proc} value={proc}>{proc}</option>
+                      {PROCEDURES_LIST.map((pr) => (
+                        <option key={pr} value={pr}>{pr}</option>
                       ))}
                     </select>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">Total Fee ($)</label>
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Total Amount ($)</label>
                       <input
                         type="number"
                         value={invoiceForm.amount}
                         onChange={(e) => setInvoiceForm({ ...invoiceForm, amount: e.target.value })}
                         className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                        required
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">Advance ($)</label>
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Advance Paid ($)</label>
                       <input
                         type="number"
                         value={invoiceForm.advance}
@@ -1132,50 +1211,56 @@ const DentistPortal = () => {
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    className="w-full bg-[#3ec1d3] hover:bg-[#34adb9] text-white font-bold text-xs py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" /> Create & Print Invoice
-                  </button>
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      className="w-full bg-[#3ec1d3] hover:bg-[#34adb9] text-white font-bold text-xs py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <DollarSign className="w-4 h-4" /> Issue & Print Bill Invoice
+                    </button>
+                  </div>
                 </form>
               </div>
 
-              {/* Invoices List */}
-              <div className="lg:col-span-2 bg-[#142637] p-6 rounded-2xl border border-slate-700/60 shadow-xl space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-700/60 pb-4">
-                  <h3 className="text-lg font-bold text-white">Recent Treatment Invoices</h3>
-                  <span className="text-xs text-slate-400">{invoices.length} Invoices</span>
-                </div>
-
+              {/* Invoices List Table */}
+              <div className="lg:col-span-2 bg-[#142637] p-6 rounded-2xl border border-slate-700/60 shadow-xl">
+                <h3 className="text-lg font-bold text-white mb-6 border-b border-slate-700/60 pb-4">Recent Billing Invoices</h3>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-300">
-                    <thead className="bg-[#0f2132] text-slate-400 uppercase tracking-wider text-[10px]">
-                      <tr>
-                        <th className="p-3">Invoice #</th>
-                        <th className="p-3">Patient</th>
-                        <th className="p-3">Procedure</th>
-                        <th className="p-3">Total</th>
-                        <th className="p-3">Paid</th>
-                        <th className="p-3">Due</th>
-                        <th className="p-3 text-right">Action</th>
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-700 text-slate-400 text-[11px] uppercase tracking-wider">
+                        <th className="py-3 px-4">Invoice ID</th>
+                        <th className="py-3 px-4">Patient</th>
+                        <th className="py-3 px-4">Procedure</th>
+                        <th className="py-3 px-4">Total / Due</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4 text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-700/40 font-medium">
+                    <tbody className="divide-y divide-slate-700/50 text-xs">
                       {invoices.map((inv) => (
-                        <tr key={inv.id} className="hover:bg-[#0f2132]/50">
-                          <td className="p-3 font-bold text-[#3ec1d3]">{inv.id}</td>
-                          <td className="p-3 font-bold text-white">{inv.patientName}</td>
-                          <td className="p-3 text-slate-300">{inv.procedure}</td>
-                          <td className="p-3 font-bold">${inv.amount}</td>
-                          <td className="p-3 text-emerald-400">${inv.advance}</td>
-                          <td className="p-3 text-amber-400">${inv.due}</td>
-                          <td className="p-3 text-right">
+                        <tr key={inv.id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3.5 px-4 font-bold text-[#3ec1d3]">{inv.id}</td>
+                          <td className="py-3.5 px-4 font-semibold text-white">{inv.patientName}</td>
+                          <td className="py-3.5 px-4 text-slate-300">{inv.procedure}</td>
+                          <td className="py-3.5 px-4 font-semibold text-white">
+                            ${inv.amount} <span className="block text-[10px] text-amber-400">Due: ${inv.due}</span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                              inv.status === 'Paid'
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                            }`}>
+                              {inv.status}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
                             <button
                               onClick={() => setActiveInvoicePrint(inv)}
-                              className="text-xs bg-slate-800 hover:bg-slate-700 text-white px-2.5 py-1 rounded-md cursor-pointer"
+                              className="bg-slate-800 hover:bg-slate-700 text-[#3ec1d3] px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700 cursor-pointer flex items-center gap-1 ml-auto"
                             >
-                              Print
+                              <Printer className="w-3.5 h-3.5" /> Print
                             </button>
                           </td>
                         </tr>
@@ -1184,38 +1269,92 @@ const DentistPortal = () => {
                   </table>
                 </div>
               </div>
+
             </div>
+
+            {/* Active Invoice Print Modal */}
+            {activeInvoicePrint && (
+              <div className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4">
+                <div className="bg-white text-slate-900 w-full max-w-lg rounded-2xl shadow-2xl p-8 relative">
+                  <button onClick={() => setActiveInvoicePrint(null)} className="absolute top-4 right-4 text-slate-400 hover:text-black p-2 cursor-pointer">
+                    <X className="w-5 h-5" />
+                  </button>
+
+                  <div className="border-b-2 border-[#0e2a47] pb-4 mb-6 flex justify-between items-start">
+                    <div>
+                      <h2 className="text-2xl font-black text-[#0e2a47]">DentoCare Invoice</h2>
+                      <p className="text-xs text-slate-500">Official Treatment Receipt</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-[#3ec1d3]">{activeInvoicePrint.id}</p>
+                      <p className="text-xs text-slate-500">Date: {activeInvoicePrint.date}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 text-xs space-y-2">
+                    <p><strong className="text-slate-500">Patient:</strong> {activeInvoicePrint.patientName}</p>
+                    <p><strong className="text-slate-500">Procedure:</strong> {activeInvoicePrint.procedure}</p>
+                    <p><strong className="text-slate-500">Attending Specialist:</strong> {doctor.name}</p>
+                  </div>
+
+                  <div className="space-y-2 mb-6 text-xs border-b border-slate-200 pb-4">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Total Treatment Fee:</span>
+                      <span className="font-bold text-slate-900">${activeInvoicePrint.amount}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Advance Paid:</span>
+                      <span className="font-bold text-emerald-600">-${activeInvoicePrint.advance}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-black pt-2 border-t">
+                      <span>Balance Due:</span>
+                      <span className="text-amber-600">${activeInvoicePrint.due}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => window.print()}
+                      className="bg-[#0e2a47] hover:bg-[#3ec1d3] text-white font-bold text-xs px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-md"
+                    >
+                      <Printer className="w-4 h-4" /> Print Invoice
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </motion.div>
         )}
 
         {/* ══════════════════════════════════════════════════════════════════════ */}
-        {/* TAB 4: DOCTOR BLOG MANAGER                                            */}
+        {/* TAB 4: BLOG MANAGER & HEALTH ARTICLES                                 */}
         {/* ══════════════════════════════════════════════════════════════════════ */}
         {activeTab === 'blogs' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               
-              {/* Blog Article Form */}
-              <div className="bg-[#142637] p-6 rounded-2xl border border-slate-700/60 shadow-xl space-y-5">
-                <div className="flex items-center gap-2 border-b border-slate-700/60 pb-4">
+              {/* Write Article Form */}
+              <div className="bg-[#142637] p-6 rounded-2xl border border-slate-700/60 shadow-xl">
+                <div className="flex items-center gap-2 border-b border-slate-700/60 pb-4 mb-6">
                   <BookOpen className="w-5 h-5 text-[#3ec1d3]" />
-                  <h3 className="text-lg font-bold text-white">Publish Oral Care Article</h3>
+                  <h3 className="text-lg font-bold text-white">Publish Health Article</h3>
                 </div>
 
                 <form onSubmit={handlePublishBlog} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">Article Title</label>
+                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Article Title</label>
                     <input
                       type="text"
-                      placeholder="e.g. Benefits of Clear Aligners"
+                      placeholder="e.g. 5 Tips for Whiter Teeth"
                       value={blogForm.title}
                       onChange={(e) => setBlogForm({ ...blogForm, title: e.target.value })}
                       className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                      required
                     />
                   </div>
-
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">Category</label>
+                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Category</label>
                     <select
                       value={blogForm.category}
                       onChange={(e) => setBlogForm({ ...blogForm, category: e.target.value })}
@@ -1224,263 +1363,144 @@ const DentistPortal = () => {
                       <option value="Preventive Care">Preventive Care</option>
                       <option value="Orthodontics">Orthodontics</option>
                       <option value="Cosmetic Dentistry">Cosmetic Dentistry</option>
-                      <option value="Oral Health">Oral Health</option>
+                      <option value="Oral Surgery">Oral Surgery</option>
                     </select>
                   </div>
-
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">Short Excerpt</label>
+                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Cover Image URL</label>
                     <input
                       type="text"
-                      placeholder="Brief overview for blog cards..."
-                      value={blogForm.excerpt}
-                      onChange={(e) => setBlogForm({ ...blogForm, excerpt: e.target.value })}
+                      placeholder="https://images.unsplash.com/..."
+                      value={blogForm.coverImage}
+                      onChange={(e) => setBlogForm({ ...blogForm, coverImage: e.target.value })}
                       className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">Article Content</label>
+                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Article Content</label>
                     <textarea
-                      rows={4}
-                      placeholder="Write educational content for patients..."
+                      rows={5}
+                      placeholder="Write your health insight here..."
                       value={blogForm.content}
                       onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}
-                      className="w-full bg-[#0f2132] border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                      className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                      required
                     />
                   </div>
-
                   <button
                     type="submit"
-                    className="w-full bg-[#3ec1d3] hover:bg-[#34adb9] text-white font-bold text-xs py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full bg-[#3ec1d3] hover:bg-[#34adb9] text-white font-bold text-xs py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <Send className="w-4 h-4" /> Publish to Website Blog
+                    <Send className="w-4 h-4" /> Publish Article
                   </button>
                 </form>
               </div>
 
               {/* Published Articles List */}
-              <div className="lg:col-span-2 bg-[#142637] p-6 rounded-2xl border border-slate-700/60 shadow-xl space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-700/60 pb-4">
-                  <h3 className="text-lg font-bold text-white">Your Published Articles</h3>
-                  <span className="text-xs text-slate-400">{blogs.length} Published</span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="lg:col-span-2 bg-[#142637] p-6 rounded-2xl border border-slate-700/60 shadow-xl">
+                <h3 className="text-lg font-bold text-white mb-6 border-b border-slate-700/60 pb-4">Published Articles</h3>
+                <div className="space-y-4">
                   {blogs.map((b) => (
-                    <div key={b.id} className="bg-[#0f2132] p-4 rounded-xl border border-slate-700/60 flex flex-col justify-between space-y-3">
+                    <div key={b.id} className="bg-[#0f2132] p-4 rounded-xl border border-slate-700/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                       <div>
-                        <span className="text-[10px] font-bold bg-[#3ec1d3]/10 text-[#3ec1d3] px-2 py-0.5 rounded-md">
+                        <span className="text-[10px] font-bold text-[#3ec1d3] uppercase tracking-wider bg-[#3ec1d3]/10 px-2.5 py-0.5 rounded-full">
                           {b.category}
                         </span>
-                        <h4 className="text-sm font-bold text-white mt-2 leading-snug">{b.title}</h4>
-                        <p className="text-xs text-slate-400 mt-1 line-clamp-2">{b.excerpt || b.content}</p>
+                        <h4 className="text-sm font-bold text-white mt-1.5">{b.title}</h4>
+                        <p className="text-xs text-slate-400 mt-1 line-clamp-1">{b.content}</p>
+                        <p className="text-[10px] text-slate-500 mt-2">Published on {b.date} by {doctor.name}</p>
                       </div>
-                      <div className="flex items-center justify-between border-t border-slate-700/60 pt-2 text-[11px] text-slate-500">
-                        <span>{b.date}</span>
-                        <button
-                          onClick={() => setBlogs(blogs.filter((x) => x.id !== b.id))}
-                          className="text-red-400 hover:text-red-300 font-semibold"
-                        >
-                          Remove
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => setBlogs(blogs.filter((item) => item.id !== b.id))}
+                        className="text-red-400 hover:text-red-300 p-2 cursor-pointer shrink-0"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   ))}
                 </div>
               </div>
+
             </div>
           </motion.div>
         )}
+
       </div>
-
-      {/* ── Digital Prescription Print Modal ───────────────────────────────────── */}
-      {activeRxPrint && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-          <div className="bg-white text-slate-900 w-full max-w-2xl rounded-2xl p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setActiveRxPrint(null)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
-            >
-              <X className="w-6 h-6" />
-            </button>
-
-            {/* Printable RX Document */}
-            <div id="rx-printable-doc" className="space-y-6">
-              <div className="flex items-center justify-between border-b-2 border-[#3ec1d3] pb-4">
-                <div>
-                  <h2 className="text-2xl font-extrabold text-[#0e2a47]">DentoCare Dental Clinic</h2>
-                  <p className="text-xs text-slate-500">Official Clinical Digital Prescription</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-bold text-[#3ec1d3]">{activeRxPrint.prescriptionNumber}</p>
-                  <p className="text-xs text-slate-400">{new Date(activeRxPrint.issuedAt).toLocaleDateString()}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-4 rounded-xl border">
-                <div>
-                  <p className="text-slate-400 font-bold uppercase text-[10px]">Patient Information</p>
-                  <p className="font-bold text-slate-800 text-sm mt-0.5">{activeRxPrint.patientName}</p>
-                  <p className="text-slate-600">Age: {activeRxPrint.patientAge} | Gender: {activeRxPrint.patientGender}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-slate-400 font-bold uppercase text-[10px]">Attending Doctor</p>
-                  <p className="font-bold text-slate-800 text-sm mt-0.5">{doctor.name}</p>
-                  <p className="text-[#3ec1d3] font-semibold">{doctor.specialization}</p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Rx Prescribed Medicines</p>
-                <table className="w-full text-xs border text-left">
-                  <thead className="bg-slate-100 font-bold text-slate-700">
-                    <tr>
-                      <th className="p-2 border">Medicine</th>
-                      <th className="p-2 border">Dosage</th>
-                      <th className="p-2 border">Duration</th>
-                      <th className="p-2 border">Instructions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeRxPrint.medicines?.map((m, i) => (
-                      <tr key={i} className="border-b">
-                        <td className="p-2 font-bold border">{m.name}</td>
-                        <td className="p-2 border">{m.dosage}</td>
-                        <td className="p-2 border">{m.duration}</td>
-                        <td className="p-2 border text-slate-600">{m.note}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="bg-slate-50 p-4 rounded-xl border text-xs space-y-2">
-                <p className="font-bold text-slate-700">Clinical Advice:</p>
-                <p className="text-slate-600">{activeRxPrint.advice}</p>
-                {activeRxPrint.nextVisitDate && (
-                  <p className="font-bold text-[#3ec1d3]">Next Follow-Up Date: {activeRxPrint.nextVisitDate}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-              <button
-                onClick={() => window.print()}
-                className="bg-[#3ec1d3] text-white text-xs font-bold px-5 py-2.5 rounded-xl hover:bg-[#34adb9] flex items-center gap-2 cursor-pointer"
-              >
-                <Printer className="w-4 h-4" /> Print PDF Prescription
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Printable Invoice Modal ───────────────────────────────────────────── */}
-      {activeInvoicePrint && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-          <div className="bg-white text-slate-900 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative">
-            <button
-              onClick={() => setActiveInvoicePrint(null)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
-            >
-              <X className="w-6 h-6" />
-            </button>
-
-            <div className="space-y-4">
-              <div className="border-b pb-3 text-center">
-                <h3 className="text-xl font-extrabold text-[#0e2a47]">DentoCare Clinic Invoice</h3>
-                <p className="text-xs text-slate-500">Invoice ID: {activeInvoicePrint.id}</p>
-              </div>
-
-              <div className="text-xs space-y-1">
-                <p><span className="font-bold">Patient:</span> {activeInvoicePrint.patientName}</p>
-                <p><span className="font-bold">Procedure:</span> {activeInvoicePrint.procedure}</p>
-                <p><span className="font-bold">Date:</span> {activeInvoicePrint.date}</p>
-              </div>
-
-              <div className="border-t border-b py-3 text-xs space-y-1.5">
-                <div className="flex justify-between font-bold"><span>Total Procedure Fee:</span><span>${activeInvoicePrint.amount}</span></div>
-                <div className="flex justify-between text-emerald-600"><span>Advance Paid:</span><span>-${activeInvoicePrint.advance}</span></div>
-                <div className="flex justify-between font-extrabold text-amber-600 text-sm pt-1 border-t"><span>Balance Due:</span><span>${activeInvoicePrint.due}</span></div>
-              </div>
-
-              <button
-                onClick={() => window.print()}
-                className="w-full bg-[#3ec1d3] text-white text-xs font-bold py-2.5 rounded-xl hover:bg-[#34adb9] cursor-pointer"
-              >
-                Print Official Invoice
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Edit Doctor Profile Modal ─────────────────────────────────────────── */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-          <div className="bg-[#142637] text-white w-full max-w-md rounded-2xl p-6 shadow-2xl border border-slate-700/60 relative">
-            <button
-              onClick={() => setShowEditModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
-            >
+        <div className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4">
+          <div className="bg-[#142637] text-white w-full max-w-xl rounded-2xl shadow-2xl p-6 border border-slate-700 relative">
+            <button onClick={() => setShowEditModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 cursor-pointer">
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-lg font-bold mb-4">Edit Specialist Profile</h3>
+            <h3 className="text-lg font-bold mb-6 border-b border-slate-700 pb-3 flex items-center gap-2">
+              <Edit3 className="w-5 h-5 text-[#3ec1d3]" /> Edit Doctor Profile
+            </h3>
 
-            <form onSubmit={handleSaveProfile} className="space-y-3 text-xs">
+            <form onSubmit={handleSaveProfile} className="space-y-4">
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Doctor Name</label>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">Full Name</label>
                 <input
                   type="text"
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                  required
                 />
               </div>
-
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Specialization</label>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">Specialization</label>
                 <input
                   type="text"
                   value={editForm.specialization}
                   onChange={(e) => setEditForm({ ...editForm, specialization: e.target.value })}
-                  className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                  required
                 />
               </div>
-
-              <div>
-                <label className="block text-slate-300 font-bold mb-1">Consultation Fee ($)</label>
-                <input
-                  type="number"
-                  value={editForm.consultationFee}
-                  onChange={(e) => setEditForm({ ...editForm, consultationFee: Number(e.target.value) })}
-                  className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-white"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">Consultation Fee ($)</label>
+                  <input
+                    type="number"
+                    value={editForm.consultationFee}
+                    onChange={(e) => setEditForm({ ...editForm, consultationFee: Number(e.target.value) })}
+                    className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">Experience Years</label>
+                  <input
+                    type="number"
+                    value={editForm.experienceYears}
+                    onChange={(e) => setEditForm({ ...editForm, experienceYears: Number(e.target.value) })}
+                    className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
+                  />
+                </div>
               </div>
-
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Professional Bio</label>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">Biography</label>
                 <textarea
                   rows={3}
                   value={editForm.bio}
                   onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
-                  className="w-full bg-[#0f2132] border border-slate-700 rounded-lg p-2.5 text-white"
+                  className="w-full bg-[#0f2132] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3ec1d3]"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="bg-slate-700 px-4 py-2 rounded-lg font-bold text-slate-300"
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#3ec1d3] hover:bg-[#34adb9] text-white px-5 py-2 rounded-lg font-bold"
+                  className="bg-[#3ec1d3] hover:bg-[#34adb9] text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md cursor-pointer"
                 >
                   Save Profile
                 </button>
@@ -1489,6 +1509,7 @@ const DentistPortal = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };

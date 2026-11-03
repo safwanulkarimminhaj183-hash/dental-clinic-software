@@ -13,7 +13,7 @@ import {
   // 3. Prescription Generation (PDFKit + Nodemailer)
   createAndSendPrescription,
   getAllPrescriptions,
-  downloadPrescriptionPDF,
+  downloadPrescriptionPDF,  resendPrescription,
 
   // 4. Financial Management & Payment Webhooks
   getFinancialSummary,
@@ -66,7 +66,10 @@ router.delete('/schedule/unblock-slot', protect, isAdmin, unblockTimeSlot);
 // ─────────────────────────────────────────────────────────────────────────────
 router.get( '/prescriptions',          protect, isAdmin,  getAllPrescriptions);
 router.post('/prescriptions',          protect, isDoctor, createAndSendPrescription); // Doctor+ only
-router.get( '/prescriptions/:id/pdf',  downloadPrescriptionPDF);   // Public download link (uses secure ID)
+router.get( '/prescriptions/:id/pdf',  downloadPrescriptionPDF); 
+router.post('/prescriptions/:id/resend', protect, isAdmin, resendPrescription);
+router.post('/prescriptions/:id/resend', protect, isDoctor, resendPrescription); 
+router.post('/prescriptions/:id/resend', protect, isDoctor, resendPrescription);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FEATURE 4 — Financial Management & Payment Webhooks

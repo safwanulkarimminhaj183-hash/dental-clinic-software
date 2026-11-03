@@ -5,7 +5,11 @@ import {
   Shield, 
   LogIn, 
   CalendarCheck, 
-  LayoutDashboard 
+  LayoutDashboard,
+  Users,
+  BarChart3,
+  MessageSquare,
+  CreditCard
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
@@ -95,10 +99,15 @@ const Navbar = () => {
   ];
 
   const adminLinks = [
-    { name: "Login", path: "/login", icon: LogIn, description: "Staff & admin sign in" },
-    { name: "Book", path: "/book", icon: CalendarCheck, description: "Patient reservation form" },
-    { name: "Admin", path: "/admin", icon: Shield, description: "Admin appointment hub" },
+    { name: "Booking and Payments", path: "/bookings", icon: CreditCard, description: "Treatment bookings & payments" },
+    { name: "Enquiries", path: "/enquiries", icon: MessageSquare, description: "Treatment plan inquiries" },
+    { name: "Appointments", path: "/appointments", icon: CalendarCheck, description: "Urgent & booking requests" },
+    { name: "Patients", path: "/patients", icon: Users, description: "Patient records, EMR & charts" },
+    { name: "Reports", path: "/dashboard?tab=reports", icon: BarChart3, description: "Analytics & export reports" },
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, description: "Full schedule overview" },
+    { name: "Admin", path: "/admin", icon: Shield, description: "Admin appointment hub" },
+    { name: "Book", path: "/book", icon: CalendarCheck, description: "Patient reservation form" },
+    { name: "Login", path: "/login", icon: LogIn, description: "Staff & admin sign in" },
   ];
 
   return (
@@ -177,7 +186,7 @@ const Navbar = () => {
           }}
         >
           <button className={`flex items-center gap-1 font-bold text-[15px] outline-none transition-colors cursor-pointer ${activeMenu === 'admin' ? 'text-[#3ec1d3]' : 'text-[#0e2a47] hover:text-[#3ec1d3]'}`}>
-            <span>Dashboard</span>
+            <span>Overview</span>
             <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${adminDropdown ? "rotate-180" : ""}`} />
           </button>
 
@@ -324,7 +333,7 @@ const Navbar = () => {
               <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileHomeDropdown ? "rotate-180 text-[#3ec1d3]" : ""}`} />
             </div>
             
-            <div className={`${mobileHomeDropdown ? "max-h-64 opacity-100" : "max-h-0 opacity-0"} overflow-hidden bg-[#123559] transition-all duration-300 ease-in-out`}>
+            <div className={`${mobileHomeDropdown ? "max-h-96 opacity-100" : "max-h-0 opacity-0"} overflow-hidden bg-[#123559] transition-all duration-300 ease-in-out`}>
               <ul className="text-sm pl-4">
                 <li className="border-b border-gray-700/30">
                   <Link to="/audience-based" onClick={() => setIsOpen(false)} className="block py-2.5 px-6 text-gray-300 hover:text-white">
@@ -362,12 +371,12 @@ const Navbar = () => {
             >
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-[#3ec1d3]" />
-                <span>Dashboard</span>
+                <span>Overview</span>
               </div>
               <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileAdminDropdown ? "rotate-180" : ""}`} />
             </div>
             
-            <div className={`${mobileAdminDropdown ? "max-h-64 opacity-100" : "max-h-0 opacity-0"} overflow-hidden bg-[#123559] transition-all duration-300 ease-in-out`}>
+            <div className={`${mobileAdminDropdown ? "max-h-[40rem] opacity-100" : "max-h-0 opacity-0"} overflow-hidden bg-[#123559] transition-all duration-300 ease-in-out`}>
               <ul className="text-sm divide-y divide-gray-700/30">
                 {adminLinks.map((item, idx) => {
                   const Icon = item.icon;
@@ -408,7 +417,7 @@ const Navbar = () => {
               <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileAboutDropdown ? "rotate-180 text-[#3ec1d3]" : ""}`} />
             </div>
             
-            <div className={`${mobileAboutDropdown ? "max-h-64 opacity-100" : "max-h-0 opacity-0"} overflow-hidden bg-[#123559] transition-all duration-300 ease-in-out`}>
+            <div className={`${mobileAboutDropdown ? "max-h-[32rem] opacity-100" : "max-h-0 opacity-0"} overflow-hidden bg-[#123559] transition-all duration-300 ease-in-out`}>
               <ul className="text-sm pl-4 divide-y divide-gray-700/30 text-left">
                 {aboutLinks.map((item, idx) => (
                   <li key={idx}>

@@ -38,6 +38,10 @@ import AudienceBasedPage from './pages/AudienceBasedPage';
 import ServiceFocusPage from './pages/ServiceFocusPage';
 import MultiLocationPage from './pages/MultiLocationPage';
 import UrgencyBasedPage from './pages/UrgencyBasedPage';
+import AppointmentsPage from './pages/AppointmentsPage';
+import EnquiriesPage from './pages/EnquiriesPage';
+import BookingsPaymentsPage from './pages/BookingsPaymentsPage';
+import OurClinicPage from './pages/OurClinicPage';
 
 import { useState, useEffect } from 'react';
 
@@ -135,6 +139,17 @@ function App() {
       <Route path="/service-focus" element={<ServiceFocusPage />} />
       <Route path="/multi-location" element={<MultiLocationPage />} />
       <Route path="/urgency-based" element={<UrgencyBasedPage />} />
+      <Route path="/appointments" element={<AppointmentsPage />} />
+      <Route path="/enquiries" element={<EnquiriesPage />} />
+      <Route path="/bookings" element={<BookingsPaymentsPage />} />
+      <Route path="/bookings-payments" element={<Navigate to="/bookings" replace />} />
+      <Route path="/overview/bookings" element={<Navigate to="/bookings" replace />} />
+      <Route path="/overview/bookings-payments" element={<Navigate to="/bookings" replace />} />
+      <Route path="/overview/enquiries" element={<Navigate to="/enquiries" replace />} />
+
+      {/* Our Clinic / About Routes */}
+      <Route path="/about" element={<OurClinicPage />} />
+      <Route path="/our-clinic" element={<Navigate to="/about" replace />} />
 
       {/* Protected Admin and Dashboard Routes */}
       <Route
@@ -147,6 +162,18 @@ function App() {
       />
       <Route
         path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patients"
+        element={<PatientRecords />}
+      />
+      <Route
+        path="/reports"
         element={
           <ProtectedRoute>
             <AdminDashboard />

@@ -1,5 +1,61 @@
 import mongoose from 'mongoose';
 
+const paymentRecordSchema = new mongoose.Schema(
+  {
+    transactionId: {
+      type: String,
+      default: () => `TXN-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+    },
+    amount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    paymentMethod: {
+      type: String,
+      enum: ['Cash', 'Card', 'Bank Transfer', 'Mobile Banking', 'Stripe', 'Pay At Clinic'],
+      default: 'Card',
+    },
+    paymentDate: {
+      type: Date,
+      default: Date.now,
+    },
+    status: {
+      type: String,
+      enum: ['Paid', 'Partially Paid', 'Unpaid', 'Refunded'],
+      default: 'Paid',
+    },
+    notes: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+  },
+  { _id: true }
+);
+
+const timelineEventSchema = new mongoose.Schema(
+  {
+    action: {
+      type: String,
+      required: true,
+    },
+    status: {
+      type: String,
+      default: '',
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now,
+    },
+    notes: {
+      type: String,
+      default: '',
+    },
+  },
+  { _id: true }
+);
+
 const bookingSchema = new mongoose.Schema(
   {
     bookingReference: {
@@ -12,7 +68,7 @@ const bookingSchema = new mongoose.Schema(
     treatmentPlan: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'TreatmentPlan',
-      required: true,
+      required: false,
     },
     treatmentPlanTitle: {
       type: String,
@@ -39,6 +95,7 @@ const bookingSchema = new mongoose.Schema(
       type: Number,
       required: [true, 'Patient age is required'],
       min: 1,
+      default: 25,
     },
     appointmentDate: {
       type: Date,
@@ -70,17 +127,22 @@ const bookingSchema = new mongoose.Schema(
     },
     paymentStatus: {
       type: String,
-      enum: ['Pending', 'Partial', 'Paid', 'Failed'],
-      default: 'Pending',
+      enum: ['Unpaid', 'Partially Paid', 'Paid', 'Refunded', 'Pending', 'Partial', 'Failed'],
+      default: 'Unpaid',
     },
     bookingStatus: {
       type: String,
-      enum: ['Pending', 'Confirmed', 'Cancelled', 'Completed'],
-      default: 'Pending',
+      enum: ['Pending', 'Confirmed', 'Rescheduled', 'Completed', 'Cancelled', 'No Show'],
+      default: 'Confirmed',
     },
     paymentMethod: {
       type: String,
-      default: 'Stripe',
+      default: 'Card',
+      trim: true,
+    },
+    transactionId: {
+      type: String,
+      default: () => `TXN-${Date.now()}`,
       trim: true,
     },
     paymentIntentId: {
@@ -88,7 +150,14 @@ const bookingSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    payments: [paymentRecordSchema],
+    timeline: [timelineEventSchema],
     notes: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    staffNotes: {
       type: String,
       default: '',
       trim: true,
@@ -96,11 +165,21 @@ const bookingSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
 
+// Virtual for remaining balance
+bookingSchema.virtual('remainingBalance').get(function () {
+  const remaining = (this.totalAmount || 0) - (this.amountPaid || 0);
+  return Math.max(0, remaining);
+});
+
 bookingSchema.index({ appointmentDate: 1, appointmentTime: 1, doctorName: 1 });
 bookingSchema.index({ patientEmail: 1 });
+bookingSchema.index({ bookingStatus: 1, paymentStatus: 1 });
+bookingSchema.index({ createdAt: -1 });
 
 const Booking = mongoose.model('Booking', bookingSchema);
 export default Booking;

@@ -32,6 +32,12 @@ const userActivitySchema = new mongoose.Schema(
         'login',
         'view_branch',
         'view_doctor',
+        'post_op_recovery_create',
+        'post_op_recovery_update',
+        'post_op_recovery_archive',
+        'post_op_recovery_restore',
+        'post_op_recovery_followup',
+        'post_op_recovery_view',
       ],
     },
     metadata: {

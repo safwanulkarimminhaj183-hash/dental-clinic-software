@@ -453,6 +453,17 @@ const SpecialistCard = ({ specialist, index }) => {
           <div className="flex items-center gap-2">
             <Link
               to={`/doctor-portal/${specialist._id || specialist.slug || 'doc-1'}`}
+              state={{ doctor: specialist }}
+              onClick={() => {
+                try {
+                  sessionStorage.setItem(
+                    `dentocare_portal_doctor_${specialist._id || specialist.slug}`,
+                    JSON.stringify(specialist)
+                  );
+                } catch {
+                  /* storage unavailable: router state is still used */
+                }
+              }}
               className="bg-slate-800 hover:bg-[#0e2a47] text-[#3ec1d3] text-[12px] font-bold px-3 py-2 rounded-lg transition-colors duration-200 flex items-center gap-1 whitespace-nowrap border border-slate-700"
             >
               <Stethoscope className="w-3.5 h-3.5 text-[#3ec1d3]" /> Portal
@@ -694,311 +705,176 @@ const DentistSpecialists = () => {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-4xl md:text-5xl font-extrabold text-white leading-tight mb-4"
+            className="text-3xl md:text-5xl font-extrabold text-white mb-4 tracking-tight"
           >
-            Meet Our Dental{' '}
-            <span className="text-[#3ec1d3]">Specialists</span>
+            Meet Our Dental Specialists
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-slate-300 text-lg max-w-2xl mx-auto mb-8"
+            className="text-slate-300 text-base md:text-lg max-w-2xl mx-auto mb-8 font-normal"
           >
-            Board-certified experts across every dental discipline — from orthodontics and oral surgery to cosmetic dentistry and pediatric care.
+            World-class dental experts dedicated to your smile, combining advanced technology with compassionate, personalized care.
           </motion.p>
 
-          {/* Quick stats */}
+          {/* Search & Filter Bar */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex flex-wrap justify-center gap-8"
+            className="bg-white p-3 rounded-2xl shadow-xl flex flex-col md:flex-row gap-3 max-w-2xl mx-auto"
           >
-            {[
-              { value: '6+', label: 'Specialists' },
-              { value: '15,000+', label: 'Patients Served' },
-              { value: '18+', label: 'Avg. Years Exp.' },
-              { value: '4.8★', label: 'Average Rating' },
-            ].map(({ value, label }) => (
-              <div key={label} className="text-center">
-                <p className="text-2xl font-extrabold text-[#3ec1d3]">{value}</p>
-                <p className="text-xs text-slate-400 uppercase tracking-wider">{label}</p>
-              </div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── Breadcrumb ─────────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-slate-100 px-6 md:px-16 py-3">
-        <div className="max-w-7xl mx-auto flex items-center gap-2 text-[13px] text-slate-500">
-          <Link to="/" className="hover:text-[#3ec1d3] transition-colors">Home</Link>
-          <ChevronRight className="w-3.5 h-3.5" />
-          <span className="text-[#3ec1d3] font-semibold">Dental Specialists</span>
-        </div>
-      </div>
-
-      {/* ── Tab Navigation ─────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-slate-100 z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 md:px-16 flex gap-0 overflow-x-auto">
-          {tabs.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-2 px-5 py-4 text-[13px] font-bold border-b-2 transition-all duration-200 whitespace-nowrap cursor-pointer ${
-                activeTab === id
-                  ? 'border-[#3ec1d3] text-[#3ec1d3]'
-                  : 'border-transparent text-slate-500 hover:text-[#3ec1d3]'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <main className="max-w-7xl mx-auto px-6 md:px-16 py-12">
-
-        {/* ══════════════════════════════════════════════════════════════════ */}
-        {/* TAB 1: SPECIALISTS                                                */}
-        {/* ══════════════════════════════════════════════════════════════════ */}
-        {activeTab === 'specialists' && (
-          <>
-            {/* Search + Filter Bar */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-8">
-              <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search by name or specialization…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#3ec1d3]/30 focus:border-[#3ec1d3] transition-all"
-                />
-              </div>
+            <div className="flex-1 flex items-center gap-2 px-3 bg-slate-50 rounded-xl border border-slate-200">
+              <Search className="w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by doctor name..."
+                className="w-full py-2.5 bg-transparent text-sm text-[#0e2a47] placeholder-slate-400 focus:outline-none"
+              />
+            </div>
+            <div className="w-full md:w-52">
               <select
                 value={filterSpec}
                 onChange={(e) => setFilterSpec(e.target.value)}
-                className="sm:w-64 px-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#3ec1d3]/30 focus:border-[#3ec1d3] transition-all text-slate-600 cursor-pointer"
+                className="w-full py-3 px-3 bg-slate-50 rounded-xl border border-slate-200 text-sm text-[#0e2a47] focus:outline-none cursor-pointer font-medium"
               >
                 <option value="">All Specializations</option>
-                {specializations.map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                {specializations.map((spec) => (
+                  <option key={spec} value={spec}>{spec}</option>
                 ))}
               </select>
-              {(searchQuery || filterSpec) && (
-                <button
-                  onClick={() => { setSearchQuery(''); setFilterSpec(''); }}
-                  className="px-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white text-slate-500 hover:border-[#3ec1d3] hover:text-[#3ec1d3] transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" /> Clear
-                </button>
-              )}
-            </div>
-
-            {/* Error (only if no mock fallback available) */}
-            {error && !usingMock && (
-              <div className="flex flex-col items-center py-16 text-center gap-4">
-                <AlertCircle className="w-10 h-10 text-red-400" />
-                <p className="text-slate-600 font-medium">{error}</p>
-                <button
-                  onClick={fetchSpecialists}
-                  className="px-6 py-2.5 bg-[#3ec1d3] text-white text-sm font-bold rounded-xl hover:bg-[#0e2a47] transition-colors"
-                >
-                  Retry
-                </button>
-              </div>
-            )}
-
-            {/* Skeleton loading grid */}
-            {loading && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
-              </div>
-            )}
-
-            {/* Specialist Grid */}
-            {!loading && specialists.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {specialists.map((s, i) => (
-                  <SpecialistCard key={s._id} specialist={s} index={i} />
-                ))}
-              </div>
-            )}
-
-            {/* Empty state */}
-            {!loading && specialists.length === 0 && (
-              <div className="flex flex-col items-center py-20 gap-4 text-center">
-                <Search className="w-10 h-10 text-slate-300" />
-                <p className="text-slate-500 font-medium">No specialists match your search.</p>
-                <button
-                  onClick={() => { setSearchQuery(''); setFilterSpec(''); }}
-                  className="text-[#3ec1d3] text-sm font-semibold hover:underline"
-                >
-                  Clear filters
-                </button>
-              </div>
-            )}
-
-            {/* Telemedicine CTA strip */}
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              className="mt-14 bg-gradient-to-r from-[#0e2a47] to-[#1a4a73] rounded-2xl p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6"
-            >
-              <div className="text-white">
-                <div className="flex items-center gap-2 mb-2">
-                  <Video className="w-5 h-5 text-[#3ec1d3]" />
-                  <span className="text-[#3ec1d3] text-xs font-bold uppercase tracking-wider">Telemedicine</span>
-                </div>
-                <h3 className="text-xl md:text-2xl font-extrabold mb-1">Consult From Home</h3>
-                <p className="text-slate-300 text-sm max-w-md">
-                  Get expert dental advice via secure video call or chat. Available evenings and weekends.
-                </p>
-              </div>
-              <div className="flex gap-3 flex-shrink-0">
-                <Link
-                  to="/book"
-                  className="bg-[#3ec1d3] hover:bg-white hover:text-[#0e2a47] text-white font-bold px-6 py-3 rounded-xl transition-all duration-200 text-sm"
-                >
-                  Book Online Consult
-                </Link>
-              </div>
-            </motion.div>
-          </>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════ */}
-        {/* TAB 2: TREATMENT PRICING                                          */}
-        {/* ══════════════════════════════════════════════════════════════════ */}
-        {activeTab === 'pricing' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4 }}
-          >
-            <div className="max-w-3xl mx-auto">
-              <div className="text-center mb-10">
-                <h2 className="text-2xl md:text-3xl font-extrabold text-[#0e2a47] mb-2">
-                  Treatment Fee Guide
-                </h2>
-                <p className="text-slate-500 text-sm">
-                  Indicative price ranges. Final fees depend on case complexity and materials. All procedures include a free follow-up review.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-10">
-                {fees.map((item, i) => (
-                  <PricingCard key={item.procedure} item={item} index={i} />
-                ))}
-              </div>
-
-              {/* Insurance Note */}
-              <div className="bg-[#f0f9fa] border border-[#3ec1d3]/30 rounded-2xl p-6 text-center">
-                <Award className="w-7 h-7 text-[#3ec1d3] mx-auto mb-3" />
-                <h4 className="text-[#0e2a47] font-bold mb-1">Insurance & Payment Plans</h4>
-                <p className="text-slate-500 text-sm mb-4">
-                  We accept all major dental insurance plans and offer 0% interest payment plans for treatments over $2,000.
-                </p>
-                <Link
-                  to="/book"
-                  className="inline-flex items-center gap-2 bg-[#3ec1d3] hover:bg-[#0e2a47] text-white text-sm font-bold px-6 py-2.5 rounded-xl transition-colors duration-200"
-                >
-                  <CalendarDays className="w-4 h-4" /> Get a Free Quote
-                </Link>
-              </div>
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* ── Tabs Navigation ──────────────────────────────────────────────────── */}
+      <div className="bg-white border-b border-slate-200 sticky top-[80px] md:top-[90px] z-40 shadow-xs">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 flex gap-4 overflow-x-auto">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 py-4 px-4 font-bold text-sm border-b-2 transition-all whitespace-nowrap cursor-pointer ${
+                  active
+                    ? 'border-[#3ec1d3] text-[#3ec1d3]'
+                    : 'border-transparent text-slate-500 hover:text-[#0e2a47]'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Main Content Area ────────────────────────────────────────────────── */}
+      <main className="max-w-7xl mx-auto px-6 md:px-12 py-12">
+
+        {/* TAB 1: SPECIALISTS */}
+        {activeTab === 'specialists' && (
+          <div>
+            {usingMock && (
+              <div className="mb-8 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl flex items-center justify-between text-xs font-medium">
+                <span className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  Showing curated clinic roster (Backend offline or syncing).
+                </span>
+                <button
+                  onClick={fetchSpecialists}
+                  className="flex items-center gap-1 text-amber-900 hover:text-black font-bold underline cursor-pointer"
+                >
+                  <RefreshCw className="w-3 h-3" /> Retry
+                </button>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            ) : specialists.length === 0 ? (
+              <div className="text-center py-20 bg-white rounded-2xl border border-slate-100 shadow-xs">
+                <Stethoscope className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <h3 className="text-lg font-bold text-[#0e2a47] mb-1">No Specialists Found</h3>
+                <p className="text-sm text-slate-400 mb-4">Try adjusting your search criteria or filters.</p>
+                <button
+                  onClick={() => { setSearchQuery(''); setFilterSpec(''); }}
+                  className="bg-[#3ec1d3] text-white px-5 py-2 rounded-lg text-xs font-bold shadow-sm"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {specialists.map((doc, idx) => (
+                  <SpecialistCard key={doc._id || idx} specialist={doc} index={idx} />
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
-        {/* ══════════════════════════════════════════════════════════════════ */}
-        {/* TAB 3: DENTAL HEALTH BLOG                                         */}
-        {/* ══════════════════════════════════════════════════════════════════ */}
-        {activeTab === 'blogs' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4 }}
-          >
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-2xl md:text-3xl font-extrabold text-[#0e2a47]">
-                  Dental Health Articles
-                </h2>
-                <p className="text-slate-500 text-sm mt-1">
-                  Expert insights from our specialist team
-                </p>
-              </div>
-              {blogsLoading && (
-                <Loader2 className="w-5 h-5 text-[#3ec1d3] animate-spin" />
-              )}
+        {/* TAB 2: PRICING */}
+        {activeTab === 'pricing' && (
+          <div>
+            <div className="text-center max-w-xl mx-auto mb-10">
+              <h2 className="text-2xl font-bold text-[#0e2a47] mb-2">Transparent Treatment Pricing</h2>
+              <p className="text-sm text-slate-500">
+                At DentoCare, we believe in upfront pricing with no hidden fees. Below are our standard fee ranges for common procedures.
+              </p>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {fees.map((item, idx) => (
+                <PricingCard key={idx} item={item} index={idx} />
+              ))}
+            </div>
+            <div className="mt-10 text-center">
+              <Link
+                to="/book"
+                className="inline-flex items-center gap-2 bg-[#0e2a47] hover:bg-[#3ec1d3] text-white text-sm font-bold px-8 py-3.5 rounded-xl transition-colors shadow-md"
+              >
+                <CalendarDays className="w-4 h-4" /> Book Consultation for Accurate Estimate
+              </Link>
+            </div>
+          </div>
+        )}
 
+        {/* TAB 3: BLOGS */}
+        {activeTab === 'blogs' && (
+          <div>
+            <div className="text-center max-w-xl mx-auto mb-10">
+              <h2 className="text-2xl font-bold text-[#0e2a47] mb-2">From Our Dental Experts</h2>
+              <p className="text-sm text-slate-500">
+                Stay informed with the latest insights, preventive care tips, and advanced dental procedures written by our specialists.
+              </p>
+            </div>
             {blogsLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[0,1,2].map(i => (
-                  <div key={i} className="bg-white rounded-xl animate-pulse overflow-hidden border border-slate-100">
-                    <div className="h-44 bg-slate-200" />
-                    <div className="p-4 space-y-2">
-                      <div className="h-3 bg-slate-100 rounded w-1/3" />
-                      <div className="h-4 bg-slate-200 rounded w-full" />
-                      <div className="h-3 bg-slate-100 rounded w-5/6" />
-                    </div>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-72 bg-slate-200 rounded-xl animate-pulse" />
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {blogs.map((b, i) => <BlogCard key={b._id} blog={b} index={i} />)}
-              </div>
-            )}
-
-            {/* Categories sidebar info */}
-            <div className="mt-10 bg-white rounded-2xl border border-slate-100 p-6">
-              <h4 className="text-[#0e2a47] font-bold text-base mb-4 flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-[#3ec1d3]" /> Article Categories
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {['Oral Hygiene','Cosmetic Dentistry','Orthodontics','Pediatric Dentistry',
-                  'Implants','Root Canal','Teeth Whitening','Gum Disease','Patient Tips'].map((cat) => (
-                  <span key={cat} className="text-[12px] font-semibold bg-[#f0f9fa] text-[#3ec1d3] border border-[#3ec1d3]/20 px-3 py-1 rounded-full cursor-pointer hover:bg-[#3ec1d3] hover:text-white transition-colors duration-200">
-                    {cat}
-                  </span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {blogs.map((blog, idx) => (
+                  <BlogCard key={blog._id || idx} blog={blog} index={idx} />
                 ))}
               </div>
-            </div>
-          </motion.div>
-        )}
-      </main>
-
-      {/* ── Footer CTA ─────────────────────────────────────────────────────── */}
-      <section className="bg-white border-t border-slate-100 py-12 px-6 md:px-16">
-        <div className="max-w-4xl mx-auto text-center">
-          <h3 className="text-xl md:text-2xl font-extrabold text-[#0e2a47] mb-2">
-            Ready to meet your specialist?
-          </h3>
-          <p className="text-slate-500 text-sm mb-6">
-            Book a consultation today — in-person or online. Most appointments available within 48 hours.
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link
-              to="/book"
-              className="bg-[#3ec1d3] hover:bg-[#0e2a47] text-white font-bold px-8 py-3 rounded-xl transition-colors duration-200 flex items-center gap-2"
-            >
-              <CalendarDays className="w-4 h-4" /> Book an Appointment
-            </Link>
-            <a
-              href="tel:5122051826"
-              className="bg-white border border-[#3ec1d3] text-[#3ec1d3] hover:bg-[#f0f9fa] font-bold px-8 py-3 rounded-xl transition-colors duration-200 flex items-center gap-2"
-            >
-              <Phone className="w-4 h-4" /> Call 512-205-1826
-            </a>
+            )}
           </div>
-        </div>
-      </section>
+        )}
+
+      </main>
     </div>
   );
 };

@@ -4,6 +4,7 @@ import TreatmentPlan from '../models/TreatmentPlan.js';
 import Booking from '../models/Booking.js';
 import Appointment from '../models/Appointment.js';
 import PatientRecord from '../models/PatientRecord.js';
+import Enquiry from '../models/Enquiry.js';
 import { getCache, setCache, deleteCachePattern } from '../utils/redisClient.js';
 import { addNotificationJob } from '../utils/notificationQueue.js';
 
@@ -461,18 +462,33 @@ export const enquireTreatmentPlan = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Name, email, and treatment plan title are required.' });
     }
 
-    // Queue notification job in BullMQ
-    await addNotificationJob('treatment_enquiry', {
+    // Save to MongoDB collection
+    const enquiry = await Enquiry.create({
+      treatmentPlanTitle,
       patientName,
       patientEmail,
-      patientPhone,
-      treatmentPlanTitle,
-      enquiryMessage: message,
+      patientPhone: patientPhone || '',
+      message: message || '',
+      status: 'New',
     });
+
+    // Queue notification job in BullMQ if active
+    try {
+      await addNotificationJob('treatment_enquiry', {
+        patientName,
+        patientEmail,
+        patientPhone,
+        treatmentPlanTitle,
+        enquiryMessage: message,
+      });
+    } catch (queueErr) {
+      // Safe fallback if redis is offline
+    }
 
     return res.status(200).json({
       success: true,
       message: 'Enquiry submitted successfully! Our team will contact you shortly.',
+      data: enquiry,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

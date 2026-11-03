@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { AlertTriangle, Clock, Calendar, CheckCircle } from 'lucide-react';
+import { addLocalAppointment, getLocalAppointments, mergeAppointments } from '../utils/urgentAppointments';
 
 const API_BASE = 'http://localhost:5000';
 
@@ -43,25 +44,17 @@ const UrgencyBasedPage = () => {
   }, []);
 
   const fetchRecentAppointments = async () => {
+    let server = [];
     try {
       const res = await fetch(`${API_BASE}/api/urgent-appointments`);
       if (res.ok) {
         const response = await res.json();
-        const data = response.data || [];
-        setRecentAppointments(data);
-      } else {
-        // Mock data fallback
-        setRecentAppointments([
-          { id: 1, type: 'Emergency', date: '2026-10-04', timeSlot: '10:00 AM', status: 'Confirmed' },
-          { id: 2, type: 'Routine', date: '2026-10-05', timeSlot: '02:00 PM', status: 'Pending' }
-        ]);
+        server = response.data || [];
       }
     } catch (err) {
-      setRecentAppointments([
-        { id: 1, type: 'Emergency', date: '2026-10-04', timeSlot: '10:00 AM', status: 'Confirmed' },
-        { id: 2, type: 'Routine', date: '2026-10-05', timeSlot: '02:00 PM', status: 'Pending' }
-      ]);
+      // backend offline: show locally saved requests only
     }
+    setRecentAppointments(mergeAppointments(server, getLocalAppointments()).slice(0, 5));
   };
 
   const handleSubmit = async (e) => {
@@ -75,7 +68,7 @@ const UrgencyBasedPage = () => {
       const res = await fetch(`${API_BASE}/api/urgent-appointments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, type: formData.urgencyType })
       });
       
       const data = await res.json().catch(() => ({}));
@@ -83,6 +76,7 @@ const UrgencyBasedPage = () => {
       if (!res.ok) throw new Error(data.message || 'Failed to book appointment');
       
       setSuccess('Appointment request submitted successfully!');
+      addLocalAppointment(formData, data.data);
       if (data.alertSent || formData.urgencyType === 'Emergency') {
         setAlertSent(true);
       }
@@ -96,6 +90,7 @@ const UrgencyBasedPage = () => {
       fetchRecentAppointments();
     } catch (err) {
       // Simulate success for demo purposes if backend isn't connected
+      addLocalAppointment(formData, null);
       setSuccess('Appointment request submitted successfully!');
       if (formData.urgencyType === 'Emergency') setAlertSent(true);
       setFormData({

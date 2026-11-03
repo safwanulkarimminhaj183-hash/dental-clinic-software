@@ -32,6 +32,9 @@ import patientRoutes from './routes/patientRoutes.js';
 import serviceFocusRoutes from './routes/serviceFocusRoutes.js';
 import branchRoutes from './routes/branchRoutes.js';
 import urgentAppointmentRoutes from './routes/urgentAppointmentRoutes.js';
+import enquiryRoutes from './routes/enquiryRoutes.js';
+import bookingRoutes from './routes/bookingRoutes.js';
+import postOpRecoveryRoutes from './routes/postOpRecoveryRoutes.js';
 
 import { securityHeaders, sanitizeData } from './middleware/security.js';
 import { startNotificationWorker } from './workers/notificationWorker.js';
@@ -110,7 +113,8 @@ app.use('/api/v1/blogs', dentalBlogRoutes);
 app.use('/api/articles', dentalBlogRoutes);
 app.use('/api/v1/articles', dentalBlogRoutes);
 
-// Serve processed gallery images as static files
+// Serve processed gallery images and patient uploads as static files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads/gallery/processed',   express.static(path.join(__dirname, 'uploads', 'gallery', 'processed')));
 app.use('/uploads/gallery/thumbnails',  express.static(path.join(__dirname, 'uploads', 'gallery', 'thumbnails')));
 
@@ -146,6 +150,14 @@ app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/treatment-plans', treatmentPlanRoutes);
 app.use('/api/v1/treatment-plans', treatmentPlanRoutes);
 
+// Treatment Plan Enquiries Routes
+app.use('/api/enquiries', enquiryRoutes);
+app.use('/api/v1/enquiries', enquiryRoutes);
+
+// Booking and Payments Module Routes
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/v1/bookings', bookingRoutes);
+
 // Admin Dashboard Hub Routes (RBAC, MongoDB Aggregations, Schedule, Prescriptions, Financials, Socket.io)
 app.use('/api/admin', adminDashboardRoutes);
 app.use('/api/v1/admin', adminDashboardRoutes);
@@ -170,6 +182,15 @@ app.use('/api/v1/branches', branchRoutes);
 // Urgency-Based Appointment Routes
 app.use('/api/urgent-appointments', urgentAppointmentRoutes);
 app.use('/api/v1/urgent-appointments', urgentAppointmentRoutes);
+
+// Reports & Analytics Routes
+import reportRoutes from './routes/reportsRoutes.js';
+app.use('/api/reports', reportRoutes);
+app.use('/api/v1/reports', reportRoutes);
+
+// Post-Op Recovery (About Us → Patient Records → Post-Op Recovery)
+app.use('/api/post-op-recovery', postOpRecoveryRoutes);
+app.use('/api/v1/post-op-recovery', postOpRecoveryRoutes);
 
 // Health check
 app.get('/', (req, res) => {
