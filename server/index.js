@@ -1,4 +1,3 @@
-import http from 'http';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -37,9 +36,7 @@ import bookingRoutes from './routes/bookingRoutes.js';
 import postOpRecoveryRoutes from './routes/postOpRecoveryRoutes.js';
 
 import { securityHeaders, sanitizeData } from './middleware/security.js';
-import { startNotificationWorker } from './workers/notificationWorker.js';
 import { seedTreatmentPlans } from './seedTreatmentPlans.js';
-import { initSocketServer } from './utils/socketServer.js';
 import { initRedis } from './utils/cache.js';
 import logger from './utils/logger.js';
 
@@ -47,21 +44,29 @@ dotenv.config();
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
-const httpServer = http.createServer(app);
-
-// Initialize Socket.io WebSocket server
-initSocketServer(httpServer);
 
 const corsOptions = {
   origin: (origin, callback) => {
+    const allowedOrigins = [
+      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/,
+      process.env.CLIENT_URL,
+      'https://dental-software-three.vercel.app',
+      'https://dental-software-cepkp0pgd-minhajdev.vercel.app',
+      /\.vercel\.app$/
+    ];
+
     if (!origin) return callback(null, true);
-    if (
-      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
-      origin === process.env.CLIENT_URL
-    ) {
+
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed instanceof RegExp) return allowed.test(origin);
+      return origin === allowed;
+    });
+
+    if (isAllowed) {
       return callback(null, true);
     }
-    return callback(null, true);
+    console.warn(`CORS blocked origin: ${origin}`);
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -213,7 +218,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ─── Start ────────────────────────────────────────────────────────────────────
+// ─── Start (Local Development Only) ──────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
 const start = async () => {
@@ -225,12 +230,22 @@ const start = async () => {
   // Initialize Redis for caching
   initRedis();                                // init Redis (will log success/failure)
 
-  startNotificationWorker();                   // start BullMQ notification worker
+  // Only start server if not in Vercel serverless environment
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+    logger.info('Running in serverless mode - export app instead of listening');
+    return;
+  }
 
-  httpServer.listen(PORT, () => {
-    logger.info(`Server running with Socket.io on http://localhost:${PORT}`);
-    console.log(`✅ Server running with Socket.io on http://localhost:${PORT}`);
+  app.listen(PORT, () => {
+    logger.info(`Server running on http://localhost:${PORT}`);
+    console.log(`✅ Server running on http://localhost:${PORT}`);
   });
 };
 
-start();
+// Start server for local development, but allow export for Vercel
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+  start();
+}
+
+// Export for Vercel serverless
+export default app;

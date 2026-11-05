@@ -127,7 +127,9 @@ const connectWithRetry = async (connUri) => {
   isConnecting = true;
 
   try {
-    if (connUri.includes('127.0.0.1') || connUri.includes('localhost')) {
+    // Skip auto-start MongoDB in serverless environments
+    const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_VERSION;
+    if (!isServerless && (connUri.includes('127.0.0.1') || connUri.includes('localhost'))) {
       await autoStartMongoIfDown();
     }
 
@@ -135,11 +137,11 @@ const connectWithRetry = async (connUri) => {
     console.log(`Connecting to MongoDB (${maskedUri})...`);
 
     const conn = await mongoose.connect(connUri, {
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: isServerless ? 10000 : 5000,
       socketTimeoutMS: 45000,
-      connectTimeoutMS: 5000,
-      maxPoolSize: 10,
-      minPoolSize: 2,
+      connectTimeoutMS: isServerless ? 10000 : 5000,
+      maxPoolSize: isServerless ? 1 : 10,
+      minPoolSize: isServerless ? 0 : 2,
       retryWrites: true,
       retryReads: true,
     });
@@ -152,7 +154,10 @@ const connectWithRetry = async (connUri) => {
   } catch (error) {
     const maskedError = sanitizeErrorMessage(error.message);
     console.error(`❌ MongoDB connection error: ${maskedError}`);
-    scheduleRetry(connUri);
+    // Don't retry in serverless - it will cause timeout
+    if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+      scheduleRetry(connUri);
+    }
   } finally {
     isConnecting = false;
   }
