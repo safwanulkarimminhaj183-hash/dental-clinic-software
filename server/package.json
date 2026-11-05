@@ -6,6 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "build": "echo 'No build required for backend'",
     "dev": "nodemon index.js",
     "seed": "node seedUser.js",
     "seed:gallery": "node seedGallery.js",
